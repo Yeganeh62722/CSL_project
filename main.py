@@ -42,11 +42,7 @@ rotation_speed = 5
 BALL_RADIUS = 10
 ball_x, ball_y = 140, GROUND_Y - 54
 ball_speed_x = 6
-ball_speed_y = 0
-sinusoidal_angle = 0
-ball_thrown_straight = False
-ball_thrown_sinusoidal = False
-ball_thrown_curve = False
+ball_speed_y = 2
 
 # Racket settings
 RACKET_WIDTH, RACKET_HEIGHT = 10, 80
@@ -66,14 +62,6 @@ dragging_thumb = False
 min_speed = 5
 max_speed = 20.8
 slider_speed = min_speed + (thumb_x - SLIDER_X) / SLIDER_WIDTH * (max_speed - min_speed)
-
-
-# Button settings
-BUTTON_WIDTH, BUTTON_HEIGHT = 160, 40
-straight_button_rect = pygame.Rect(WIDTH // 6 - BUTTON_WIDTH // 2, 60, BUTTON_WIDTH, BUTTON_HEIGHT)
-curve_button_rect = pygame.Rect(WIDTH // 6 - BUTTON_WIDTH // 2, 120, BUTTON_WIDTH, BUTTON_HEIGHT)
-sinusoidal_button_rect = pygame.Rect(WIDTH // 6 - BUTTON_WIDTH // 2, 180, BUTTON_WIDTH, BUTTON_HEIGHT)
-reset_button_rect = pygame.Rect(WIDTH // 6 - BUTTON_WIDTH // 2, 240, BUTTON_WIDTH, BUTTON_HEIGHT)
 
 # Game clock
 clock = pygame.time.Clock()
@@ -134,6 +122,7 @@ while True:
         # Update ball position
         ball_x += ball_speed_x
         ball_y += ball_speed_y
+        ball_rotation_angle = (ball_rotation_angle + rotation_speed) % 360
 
         # Ball-wall collisions
         if ball_y <= BALL_RADIUS or ball_y >= HEIGHT - BALL_RADIUS:
@@ -142,6 +131,7 @@ while True:
         # Ball collision with big wall
         if ball_x >= WIDTH - 50 - BALL_RADIUS:
             ball_speed_x *= -1
+            rotation_speed *= -1
 
         # Ball collision with racket
         if (
@@ -151,6 +141,7 @@ while True:
             score += 1
             
             ball_speed_x *= -1
+            rotation_speed *= -1
             hit_pos = (ball_y - (racket_y + RACKET_HEIGHT // 2)) / (RACKET_HEIGHT // 2)
 
             # Adjust ball speed and Y direction based on hit position
