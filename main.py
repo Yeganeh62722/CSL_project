@@ -1,3 +1,4 @@
+import random
 import pygame
 import sys
 import math
@@ -47,15 +48,23 @@ ball_thrown_straight = False
 ball_thrown_sinusoidal = False
 ball_thrown_curve = False
 
+# Racket settings
+RACKET_WIDTH, RACKET_HEIGHT = 10, 80
+racket_x = 20
+racket_y = HEIGHT // 2 - RACKET_HEIGHT // 2
+score = 0
+max_score = 0
+game_over = False
+
 # Slider settings
 SLIDER_WIDTH, SLIDER_HEIGHT = 200, 5
-SLIDER_X, SLIDER_Y = WIDTH // 2 - SLIDER_WIDTH // 2, 80
+SLIDER_X, SLIDER_Y = WIDTH // 2 - SLIDER_WIDTH // 2, 120
 THUMB_WIDTH, THUMB_HEIGHT = 10, 20
-thumb_x = SLIDER_X + 57  # Initial position of the thumb
+thumb_x = SLIDER_X + 38  # Initial position of the thumb
 thumb_rect = pygame.Rect(thumb_x, SLIDER_Y - (THUMB_HEIGHT // 2), THUMB_WIDTH, THUMB_HEIGHT)
 dragging_thumb = False
 min_speed = 5
-max_speed = 15.5
+max_speed = 20.8
 slider_speed = min_speed + (thumb_x - SLIDER_X) / SLIDER_WIDTH * (max_speed - min_speed)
 
 
@@ -103,35 +112,6 @@ while True:
             pygame.quit()
             sys.exit()
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if straight_button_rect.collidepoint(event.pos):
-                ball_speed_x = slider_speed
-                ball_thrown_straight = True
-                ball_thrown_curve = False
-                ball_thrown_sinusoidal = False
-                cannon_shooting = True
-            if curve_button_rect.collidepoint(event.pos):
-                ball_speed_x = slider_speed
-                ball_speed_y = -4
-                ball_thrown_straight = False
-                ball_thrown_curve = True
-                ball_thrown_sinusoidal = False
-                cannon_shooting = True
-            if sinusoidal_button_rect.collidepoint(event.pos):
-                ball_speed_x = slider_speed
-                ball_thrown_straight = False
-                ball_thrown_curve = False
-                ball_thrown_sinusoidal = True
-                cannon_shooting = True
-                sinusoidal_angle = 0
-            if reset_button_rect.collidepoint(event.pos):
-                # Reset ball position and speed
-                ball_x, ball_y = 140, GROUND_Y - 54
-                ball_speed_x = 0
-                ball_thrown_straight = False
-                ball_thrown_curve = False
-                ball_thrown_sinusoidal = False
-                cannon_shooting = False
-                sinusoidal_angle = 0
             if thumb_rect.collidepoint(event.pos):
                 dragging_thumb = True
 
@@ -141,87 +121,94 @@ while True:
         if event.type == pygame.MOUSEMOTION and dragging_thumb:
             thumb_x = max(SLIDER_X, min(SLIDER_X + SLIDER_WIDTH - THUMB_WIDTH, event.pos[0]))
             slider_speed = min_speed + (thumb_x - SLIDER_X) / SLIDER_WIDTH * (max_speed - min_speed)
-            ball_speed_x = slider_speed
+            if ball_speed_x > 0:
+                ball_speed_x = slider_speed
+            else:
+                ball_speed_x = -slider_speed
 
-    # Update ball position if thrown straight
-    if ball_thrown_straight:
+    if not game_over:
+        # Move racket with mouse
+        mouse_y = pygame.mouse.get_pos()[1]
+        racket_y = max(0, min(HEIGHT - RACKET_HEIGHT, mouse_y - RACKET_HEIGHT // 2))
+
+        # Update ball position
         ball_x += ball_speed_x
-        if ball_x + BALL_RADIUS >= WALL_X:
-            ball_speed_x = -ball_speed_x
+        ball_y += ball_speed_y
 
-    # Update ball position for curve throw
-    if ball_thrown_curve:
-        ball_x += ball_speed_x
-        ball_y +=  ball_speed_y
-        ball_speed_y += 0.07
-        if ball_x + BALL_RADIUS >= WALL_X:
-            ball_speed_x = -ball_speed_x
-            ball_speed_y = 0
+        # Ball-wall collisions
+        if ball_y <= BALL_RADIUS or ball_y >= HEIGHT - BALL_RADIUS:
+            ball_speed_y *= -1
+
+        # Ball collision with big wall
+        if ball_x >= WIDTH - 50 - BALL_RADIUS:
+            ball_speed_x *= -1
+
+        # Ball collision with racket
+        if (
+            ball_x <= RACKET_WIDTH + BALL_RADIUS * 3
+            and racket_y < ball_y < racket_y + RACKET_HEIGHT
+        ):
+            score += 1
+            
+            ball_speed_x *= -1
+            hit_pos = (ball_y - (racket_y + RACKET_HEIGHT // 2)) / (RACKET_HEIGHT // 2)
+
+            # Adjust ball speed and Y direction based on hit position
+            ball_speed_y += hit_pos * 3  # Increase speed variation
+            ball_speed_y = max(min(ball_speed_y, 10), -10)  # Cap speed to avoid runaway
+            
+        if ball_y > GROUND_Y:
+            ball_speed_y = -ball_speed_y
+        
+        if ball_x < 0:
+            game_over = True
+
+        # Draw the ground
+        pygame.draw.rect(screen, GREEN, (0, GROUND_Y, WIDTH, GROUND_HEIGHT))
+        # Draw the wall
+        pygame.draw.rect(screen, GRAY, (WALL_X, 0, 50, HEIGHT))
+        # Draw the ball image
+        animate_ball(screen, ball_x, ball_y, BALL_RADIUS, ball_rotation_angle)
+        # Draw the racket
+        pygame.draw.rect(screen, GRAY, (racket_x, racket_y, RACKET_WIDTH, RACKET_HEIGHT))
+
+
+        # Score value Label
+        font = pygame.font.SysFont(None, 48)
+        score_text = font.render(f"Score: {score}", True, GREEN)
+        screen.blit(score_text, (SLIDER_X + 40, SLIDER_Y - 80))
+        font = pygame.font.SysFont(None, 24)
+        # Draw the slider
+        pygame.draw.rect(screen, GRAY, (SLIDER_X, SLIDER_Y, SLIDER_WIDTH, SLIDER_HEIGHT))  # Slider bar
+        pygame.draw.rect(screen, RED, thumb_rect)  # Slider thumb
+        thumb_rect.x = thumb_x
+        # Speed value Label
+        speed_text = font.render(f"Speed: {slider_speed:.1f}", True, BLUE)
+        screen.blit(speed_text, (SLIDER_X + 60, SLIDER_Y - 30))
+
+    else:
+        if max_score < score:
+            max_score = score
+        
+        # Display game over message
+        game_over_text = font.render("Game Over! Press R to Restart", True, RED)
+        screen.blit(game_over_text, (WIDTH // 2 - 80, HEIGHT // 2 - 50))
+        game_score_text = font.render(f"Score: {score}", True, RED)
+        screen.blit(game_score_text, (WIDTH // 2 - 80, HEIGHT // 2))
+        max_score_text = font.render(f"Record: {max_score}", True, RED)
+        screen.blit(max_score_text, (WIDTH // 2 - 80, HEIGHT // 2 + 50))
+        
+        # Restart game on 'R' key press
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_r]:
+            # Reset game state
+            ball_x, ball_y = WIDTH // 4, HEIGHT // 2
+            ball_speed_x, ball_speed_y = 6, random.choice([-5, 5])
+            racket_y = HEIGHT // 2 - RACKET_HEIGHT // 2
+            score = 0
+            game_over = False
     
-    # Update ball position for sinusoidald throw
-    if ball_thrown_sinusoidal:
-        ball_x += ball_speed_x
-        sinusoidal_angle += 0.1
-        ball_y = (GROUND_Y - 54) - 50 * math.sin(sinusoidal_angle)
-        if ball_x + BALL_RADIUS >= WALL_X:
-            ball_speed_x = -ball_speed_x
-
-    if ball_thrown_straight or ball_thrown_curve or ball_thrown_sinusoidal:
-        ball_rotation_angle = (ball_rotation_angle + rotation_speed) % 360
-
-    if cannon_shooting:
-        if cannon_angle > min_cannon_angle:
-            cannon_angle -= cannon_animation_speed  # Rotate forward
-        else:
-            cannon_shooting = False  # Reset after full rotation
     
-    if not cannon_shooting and cannon_angle < 0:
-        cannon_angle += cannon_animation_speed
-
-    if ball_y > GROUND_Y:
-        ball_speed_y = -ball_speed_y
-    
-    if ball_x < 0:
-        ball_speed_x = 0
-        ball_speed_y = 0
-        ball_x = -20
-
-    # Draw the ground
-    pygame.draw.rect(screen, GREEN, (0, GROUND_Y, WIDTH, GROUND_HEIGHT))
-    # Draw the wall
-    pygame.draw.rect(screen, GRAY, (WALL_X, 0, 50, HEIGHT))
-    # Draw the ball image
-    animate_ball(screen, ball_x, ball_y, BALL_RADIUS, ball_rotation_angle)
-    # Draw the cannon image
-    animate_cannon(screen, cannon_image, cannon_x, cannon_y, cannon_angle)
-    # Draw the buttons
-    font = pygame.font.SysFont(None, 24)
-    # Draw the slider
-    pygame.draw.rect(screen, GRAY, (SLIDER_X, SLIDER_Y, SLIDER_WIDTH, SLIDER_HEIGHT))  # Slider bar
-    pygame.draw.rect(screen, RED, thumb_rect)  # Slider thumb
-    thumb_rect.x = thumb_x
-    # Speed value Label
-    speed_text = font.render(f"Speed: {slider_speed:.1f}", True, BLUE)
-    screen.blit(speed_text, (SLIDER_X, SLIDER_Y - 30))
-
-    # Straight throw button
-    pygame.draw.rect(screen, RED, straight_button_rect)
-    straight_text = font.render("Throw Straight", True, WHITE)
-    screen.blit(straight_text, (straight_button_rect.x + 10, straight_button_rect.y + 8))
-    # Curve throw button
-    pygame.draw.rect(screen, RED, curve_button_rect)
-    curve_text = font.render("Throw Curvy", True, WHITE)
-    screen.blit(curve_text, (curve_button_rect.x + 5, curve_button_rect.y + 8))
-    # Sinusoidal throw button
-    pygame.draw.rect(screen, RED, sinusoidal_button_rect)
-    sinusoidal_text = font.render("Throw Sinusoidal", True, WHITE)
-    screen.blit(sinusoidal_text, (sinusoidal_button_rect.x + 5, sinusoidal_button_rect.y + 8))
-    # Draw reset button (add this in the drawing section)
-    pygame.draw.rect(screen, RED, reset_button_rect)
-    reset_text = font.render("Reset Game", True, WHITE)
-    screen.blit(reset_text, (reset_button_rect.x + 10, reset_button_rect.y + 8))
-
-
     # Update display
     pygame.display.flip()
     clock.tick(60)
