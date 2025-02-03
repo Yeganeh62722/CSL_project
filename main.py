@@ -157,6 +157,10 @@ while True:
 
     if ball_y > GROUND_Y:
         ball_speed_y = -ball_speed_y
+    elif ball_x < 0:
+        ball_speed_x = 0
+        ball_speed_y = 0
+        ball_x = -20
 
     # Draw the ground
     pygame.draw.rect(screen, GREEN, (0, GROUND_Y, WIDTH, GROUND_HEIGHT))
