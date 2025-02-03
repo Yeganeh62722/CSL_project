@@ -23,18 +23,6 @@ GROUND_HEIGHT = 50
 GROUND_Y = HEIGHT - GROUND_HEIGHT
 WALL_X = WIDTH - 50
 wall_y = HEIGHT // 2
-CANNON_WIDTH = 50
-CANNON_HEIGHT = 30
-
-
-# Cannon setting
-cannon_image = pygame.image.load('cannon.png')
-cannon_image = pygame.transform.scale(cannon_image, (180, 150))
-cannon_shooting = False
-cannon_animation_speed = 3
-cannon_x, cannon_y = 30, GROUND_Y - 55
-cannon_angle = 0
-min_cannon_angle = -30  # Maximum tilt angle for animation
 
 # Ball settings
 ball_rotation_angle = 0
@@ -49,20 +37,12 @@ ball_speed_y = 2
 RACKET_WIDTH, RACKET_HEIGHT = 10, 80
 racket_x = 20
 racket_y = HEIGHT // 2 - RACKET_HEIGHT // 2
+prev_mouse_pos = pygame.mouse.get_pos()
 score = 0
-max_score = 0
+pc_score = 0
+loser_score = 0
+winner = "PC"
 game_over = False
-
-# Slider settings
-SLIDER_WIDTH, SLIDER_HEIGHT = 200, 5
-SLIDER_X, SLIDER_Y = WIDTH // 2 - SLIDER_WIDTH // 2, 120
-THUMB_WIDTH, THUMB_HEIGHT = 10, 20
-thumb_x = SLIDER_X + 38  # Initial position of the thumb
-thumb_rect = pygame.Rect(thumb_x, SLIDER_Y - (THUMB_HEIGHT // 2), THUMB_WIDTH, THUMB_HEIGHT)
-dragging_thumb = False
-min_speed = 5
-max_speed = 20.8
-slider_speed = min_speed + (thumb_x - SLIDER_X) / SLIDER_WIDTH * (max_speed - min_speed)
 
 # Game clock
 clock = pygame.time.Clock()
@@ -100,20 +80,6 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if thumb_rect.collidepoint(event.pos):
-                dragging_thumb = True
-
-        if event.type == pygame.MOUSEBUTTONUP:
-            dragging_thumb = False
-
-        if event.type == pygame.MOUSEMOTION and dragging_thumb:
-            thumb_x = max(SLIDER_X, min(SLIDER_X + SLIDER_WIDTH - THUMB_WIDTH, event.pos[0]))
-            slider_speed = min_speed + (thumb_x - SLIDER_X) / SLIDER_WIDTH * (max_speed - min_speed)
-            if ball_speed_x > 0:
-                ball_speed_x = slider_speed
-            else:
-                ball_speed_x = -slider_speed
 
     if not game_over:
         # Move racket with mouse
@@ -121,7 +87,12 @@ while True:
         racket_y = max(0, min(HEIGHT - RACKET_HEIGHT, mouse_y - RACKET_HEIGHT // 2))
 
         # Wall moves with the ball
-        wall_y = max(0, min(HEIGHT - RACKET_HEIGHT, ball_y - RACKET_HEIGHT // 2))
+        PC_WALL_SPEED = 5
+        # Smooth movement toward the ball's position
+        if ball_y > wall_y + RACKET_HEIGHT // 2:
+            wall_y = min(wall_y + PC_WALL_SPEED, HEIGHT - RACKET_HEIGHT)
+        elif ball_y < wall_y + RACKET_HEIGHT // 2:
+            wall_y = max(wall_y - PC_WALL_SPEED, 0)
 
         # Update ball position
         ball_x += ball_speed_x
@@ -133,38 +104,54 @@ while True:
             ball_speed_y *= -1
 
         # Ball collision with big wall
-        if ball_x >= WIDTH - 50 - BALL_RADIUS:
+        if (ball_x >= WIDTH - 50 - BALL_RADIUS and wall_y < ball_y < wall_y + RACKET_HEIGHT):
             ball_speed_x *= -1
             rotation_speed *= -1
-            # hit_pos = (ball_y - (wall_y + RACKET_HEIGHT // 2)) / (RACKET_HEIGHT // 2)
 
             # Adjust ball speed and Y direction based on hit position
-            # ball_speed_y += hit_pos * 3  # Increase speed variation
             ball_speed_y = int(random.random() * 30) - 15  # Cap speed to avoid runaway
             ball_speed_x = int(random.random() * -12) - 3
-            print(ball_speed_y)
             
         # Ball collision with racket
-        if (
-            ball_x <= RACKET_WIDTH + BALL_RADIUS * 3
-            and racket_y < ball_y < racket_y + RACKET_HEIGHT
-        ):
-            score += 1
-            
+        if (ball_x <= RACKET_WIDTH + BALL_RADIUS * 3 and racket_y < ball_y < racket_y + RACKET_HEIGHT):
             ball_speed_x *= -1
             rotation_speed *= -1
             hit_pos = (ball_y - (racket_y + RACKET_HEIGHT // 2)) / (RACKET_HEIGHT // 2)
 
+            # Compute mouse speed using the Euclidean distance formula   
+            current_mouse_pos = pygame.mouse.get_pos()
+            dx = current_mouse_pos[0] - prev_mouse_pos[0]
+            dy = current_mouse_pos[1] - prev_mouse_pos[1]
+            mouse_speed = math.sqrt(dx**2 + dy**2)
+            prev_mouse_pos = current_mouse_pos
+
             # Adjust ball speed and Y direction based on hit position
             ball_speed_y += hit_pos * 3  # Increase speed variation
             ball_speed_y = max(min(ball_speed_y, 10), -10)  # Cap speed to avoid runaway
-            
+            ball_speed_x = max(5 + mouse_speed//50, ball_speed_x)
+
         if ball_y > GROUND_Y:
             ball_speed_y = -ball_speed_y
         
         if ball_x < 0:
-            game_over = True
+            pc_score += 1
+            if pc_score == 10:
+                winner = "PC"
+                loser_score = score
+                game_over = True
+            ball_x, ball_y = WIDTH // 4, HEIGHT // 2
+            ball_speed_x, ball_speed_y = 6, random.choice([-5, 5]) 
 
+        if ball_x > WIDTH:
+            score += 1
+            if score == 10:
+                winner = "You"
+                loser_score = pc_score
+                game_over = True
+            ball_x, ball_y = WIDTH // 4, HEIGHT // 2
+            ball_speed_x, ball_speed_y = 6, random.choice([-5, 5])
+            
+            
         # Draw the ground
         pygame.draw.rect(screen, GREEN, (0, GROUND_Y, WIDTH, GROUND_HEIGHT))
         # Draw the wall
@@ -176,29 +163,19 @@ while True:
 
 
         # Score value Label
-        font = pygame.font.SysFont(None, 48)
-        score_text = font.render(f"Score: {score}", True, GREEN)
-        screen.blit(score_text, (SLIDER_X + 40, SLIDER_Y - 80))
         font = pygame.font.SysFont(None, 24)
-        # # Draw the slider
-        # pygame.draw.rect(screen, GRAY, (SLIDER_X, SLIDER_Y, SLIDER_WIDTH, SLIDER_HEIGHT))  # Slider bar
-        # pygame.draw.rect(screen, RED, thumb_rect)  # Slider thumb
-        # thumb_rect.x = thumb_x
-        # # Speed value Label
-        # speed_text = font.render(f"Speed: {slider_speed:.1f}", True, BLUE)
-        # screen.blit(speed_text, (SLIDER_X + 60, SLIDER_Y - 30))
+        score_text = font.render(f"Your Score: {score}", True, GREEN)
+        screen.blit(score_text, (WIDTH // 2 - 120, 40))
+        pc_score_text = font.render(f"Pc Score: {pc_score}", True, GREEN)
+        screen.blit(pc_score_text, (WIDTH // 2 + 20, 40))
 
     else:
-        if max_score < score:
-            max_score = score
         
         # Display game over message
         game_over_text = font.render("Game Over! Press R to Restart", True, RED)
         screen.blit(game_over_text, (WIDTH // 2 - 80, HEIGHT // 2 - 50))
-        game_score_text = font.render(f"Score: {score}", True, RED)
+        game_score_text = font.render(f"{winner} won 10 - {loser_score}", True, RED)
         screen.blit(game_score_text, (WIDTH // 2 - 80, HEIGHT // 2))
-        max_score_text = font.render(f"Record: {max_score}", True, RED)
-        screen.blit(max_score_text, (WIDTH // 2 - 80, HEIGHT // 2 + 50))
         
         # Restart game on 'R' key press
         keys = pygame.key.get_pressed()
@@ -208,6 +185,7 @@ while True:
             ball_speed_x, ball_speed_y = 6, random.choice([-5, 5])
             racket_y = HEIGHT // 2 - RACKET_HEIGHT // 2
             score = 0
+            pc_score = 0
             game_over = False
     
     
