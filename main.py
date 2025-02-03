@@ -22,6 +22,7 @@ STRIPE_COLOR = (255, 255, 0)  # Yellow stripes on the ball
 GROUND_HEIGHT = 50
 GROUND_Y = HEIGHT - GROUND_HEIGHT
 WALL_X = WIDTH - 50
+wall_y = HEIGHT // 2
 CANNON_WIDTH = 50
 CANNON_HEIGHT = 30
 
@@ -119,6 +120,9 @@ while True:
         mouse_y = pygame.mouse.get_pos()[1]
         racket_y = max(0, min(HEIGHT - RACKET_HEIGHT, mouse_y - RACKET_HEIGHT // 2))
 
+        # Wall moves with the ball
+        wall_y = max(0, min(HEIGHT - RACKET_HEIGHT, ball_y - RACKET_HEIGHT // 2))
+
         # Update ball position
         ball_x += ball_speed_x
         ball_y += ball_speed_y
@@ -132,7 +136,14 @@ while True:
         if ball_x >= WIDTH - 50 - BALL_RADIUS:
             ball_speed_x *= -1
             rotation_speed *= -1
+            # hit_pos = (ball_y - (wall_y + RACKET_HEIGHT // 2)) / (RACKET_HEIGHT // 2)
 
+            # Adjust ball speed and Y direction based on hit position
+            # ball_speed_y += hit_pos * 3  # Increase speed variation
+            ball_speed_y = int(random.random() * 30) - 15  # Cap speed to avoid runaway
+            ball_speed_x = int(random.random() * -12) - 3
+            print(ball_speed_y)
+            
         # Ball collision with racket
         if (
             ball_x <= RACKET_WIDTH + BALL_RADIUS * 3
@@ -157,7 +168,7 @@ while True:
         # Draw the ground
         pygame.draw.rect(screen, GREEN, (0, GROUND_Y, WIDTH, GROUND_HEIGHT))
         # Draw the wall
-        pygame.draw.rect(screen, GRAY, (WALL_X, 0, 50, HEIGHT))
+        pygame.draw.rect(screen, GRAY, (WALL_X, wall_y, RACKET_WIDTH, RACKET_HEIGHT))
         # Draw the ball image
         animate_ball(screen, ball_x, ball_y, BALL_RADIUS, ball_rotation_angle)
         # Draw the racket
@@ -169,13 +180,13 @@ while True:
         score_text = font.render(f"Score: {score}", True, GREEN)
         screen.blit(score_text, (SLIDER_X + 40, SLIDER_Y - 80))
         font = pygame.font.SysFont(None, 24)
-        # Draw the slider
-        pygame.draw.rect(screen, GRAY, (SLIDER_X, SLIDER_Y, SLIDER_WIDTH, SLIDER_HEIGHT))  # Slider bar
-        pygame.draw.rect(screen, RED, thumb_rect)  # Slider thumb
-        thumb_rect.x = thumb_x
-        # Speed value Label
-        speed_text = font.render(f"Speed: {slider_speed:.1f}", True, BLUE)
-        screen.blit(speed_text, (SLIDER_X + 60, SLIDER_Y - 30))
+        # # Draw the slider
+        # pygame.draw.rect(screen, GRAY, (SLIDER_X, SLIDER_Y, SLIDER_WIDTH, SLIDER_HEIGHT))  # Slider bar
+        # pygame.draw.rect(screen, RED, thumb_rect)  # Slider thumb
+        # thumb_rect.x = thumb_x
+        # # Speed value Label
+        # speed_text = font.render(f"Speed: {slider_speed:.1f}", True, BLUE)
+        # screen.blit(speed_text, (SLIDER_X + 60, SLIDER_Y - 30))
 
     else:
         if max_score < score:
