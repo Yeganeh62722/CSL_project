@@ -27,16 +27,16 @@ CANNON_HEIGHT = 30
 
 # Cannon setting
 cannon_image = pygame.image.load('cannon.png')
-cannon_image = pygame.transform.scale(cannon_image, (200, 180))
+cannon_image = pygame.transform.scale(cannon_image, (180, 150))
 cannon_shooting = False
-cannon_animation_speed = 2
-cannon_x, cannon_y = 0, GROUND_Y - 85
+cannon_animation_speed = 3
+cannon_x, cannon_y = 30, GROUND_Y - 55
 cannon_angle = 0
 min_cannon_angle = -30  # Maximum tilt angle for animation
 
 # Ball settings
-BALL_RADIUS = 15
-ball_x, ball_y = 177, GROUND_Y - BALL_RADIUS * 2
+BALL_RADIUS = 10
+ball_x, ball_y = 140, GROUND_Y - 54
 ball_speed_x = 6
 ball_speed_y = 0
 sinusoidal_angle = 0
@@ -48,12 +48,12 @@ ball_thrown_curve = False
 SLIDER_WIDTH, SLIDER_HEIGHT = 200, 5
 SLIDER_X, SLIDER_Y = WIDTH // 2 - SLIDER_WIDTH // 2, 80
 THUMB_WIDTH, THUMB_HEIGHT = 10, 20
-thumb_x = SLIDER_X  # Initial position of the thumb
+thumb_x = SLIDER_X + 57  # Initial position of the thumb
 thumb_rect = pygame.Rect(thumb_x, SLIDER_Y - (THUMB_HEIGHT // 2), THUMB_WIDTH, THUMB_HEIGHT)
 dragging_thumb = False
 min_speed = 5
 max_speed = 15.5
-slider_speed = min_speed
+slider_speed = min_speed + (thumb_x - SLIDER_X) / SLIDER_WIDTH * (max_speed - min_speed)
 
 
 # Button settings
@@ -105,7 +105,7 @@ while True:
                 sinusoidal_angle = 0
             if reset_button_rect.collidepoint(event.pos):
                 # Reset ball position and speed
-                ball_x, ball_y = 177, GROUND_Y - BALL_RADIUS * 2
+                ball_x, ball_y = 140, GROUND_Y - 54
                 ball_speed_x = 0
                 ball_thrown_straight = False
                 ball_thrown_curve = False
@@ -144,11 +144,11 @@ while True:
     if ball_thrown_sinusoidal:
         ball_x += ball_speed_x
         sinusoidal_angle += 0.1
-        ball_y = (GROUND_Y - BALL_RADIUS * 2) - 50 * math.sin(sinusoidal_angle)
+        ball_y = (GROUND_Y - 54) - 50 * math.sin(sinusoidal_angle)
         if ball_x + BALL_RADIUS >= WALL_X:
             ball_x = WALL_X - BALL_RADIUS
             ball_speed_x = 0
-            sinusoidal_angle = 0
+            sinusoidal_angle -= 0.1
 
     if cannon_shooting:
         if cannon_angle > min_cannon_angle:
@@ -159,7 +159,7 @@ while True:
     if not cannon_shooting and cannon_angle < 0:
         cannon_angle += cannon_animation_speed
 
-    
+
     # Draw the ground
     pygame.draw.rect(screen, GREEN, (0, GROUND_Y, WIDTH, GROUND_HEIGHT))
     # Draw the wall
