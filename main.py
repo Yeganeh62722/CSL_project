@@ -35,6 +35,9 @@ cannon_angle = 0
 min_cannon_angle = -30  # Maximum tilt angle for animation
 
 # Ball settings
+ball_rotation_angle = 0
+rotation_speed = 5
+
 BALL_RADIUS = 10
 ball_x, ball_y = 140, GROUND_Y - 54
 ball_speed_x = 6
@@ -66,13 +69,30 @@ reset_button_rect = pygame.Rect(WIDTH // 6 - BUTTON_WIDTH // 2, 240, BUTTON_WIDT
 # Game clock
 clock = pygame.time.Clock()
 
-
-
-
 def animate_cannon(screen, cannon_image, x, y, angle):
     rotated_cannon = pygame.transform.rotate(cannon_image, -angle)  # Rotate counterclockwise
     cannon_rect = rotated_cannon.get_rect(center=(x + 50, y + 25))  # Adjust position for rotation
     screen.blit(rotated_cannon, cannon_rect)
+
+def animate_ball(screen, x, y, radius, rotation_angle):
+    stripe_count  = 8
+    pygame.draw.circle(screen, BLUE, (int(x), int(y)), radius)  # Draw ball base
+
+    # Calculate rotated stripes
+    for stripe_offset in range(0, 360, int(360 / stripe_count)):
+        angle = rotation_angle + stripe_offset
+        offset_x = int(radius * math.cos(math.radians(angle)))
+        offset_y = int(radius * math.sin(math.radians(angle)))
+
+        # Draw the stripe as a line across the ball
+        pygame.draw.line(
+            screen,
+            STRIPE_COLOR,
+            (x - offset_x, y - offset_y),
+            (x + offset_x, y + offset_y),
+            1  # Line thickness
+        )
+
 
 while True:
     screen.fill(WHITE)
@@ -146,6 +166,9 @@ while True:
         if ball_x + BALL_RADIUS >= WALL_X:
             ball_speed_x = -ball_speed_x
 
+    if ball_thrown_straight or ball_thrown_curve or ball_thrown_sinusoidal:
+        ball_rotation_angle = (ball_rotation_angle + rotation_speed) % 360
+
     if cannon_shooting:
         if cannon_angle > min_cannon_angle:
             cannon_angle -= cannon_animation_speed  # Rotate forward
@@ -157,7 +180,8 @@ while True:
 
     if ball_y > GROUND_Y:
         ball_speed_y = -ball_speed_y
-    elif ball_x < 0:
+    
+    if ball_x < 0:
         ball_speed_x = 0
         ball_speed_y = 0
         ball_x = -20
@@ -166,12 +190,8 @@ while True:
     pygame.draw.rect(screen, GREEN, (0, GROUND_Y, WIDTH, GROUND_HEIGHT))
     # Draw the wall
     pygame.draw.rect(screen, GRAY, (WALL_X, 0, 50, HEIGHT))
-    # Draw the ball with stripes
-    pygame.draw.circle(screen, BLUE, (int(ball_x), int(ball_y)), BALL_RADIUS)
-    for i in range(-BALL_RADIUS, BALL_RADIUS, 4):
-        pygame.draw.line(screen, STRIPE_COLOR, 
-                         (ball_x - i, ball_y - math.sqrt(BALL_RADIUS**2 - i**2)),
-                         (ball_x - i, ball_y + math.sqrt(BALL_RADIUS**2 - i**2)))
+    # Draw the ball image
+    animate_ball(screen, ball_x, ball_y, BALL_RADIUS, ball_rotation_angle)
     # Draw the cannon image
     animate_cannon(screen, cannon_image, cannon_x, cannon_y, cannon_angle)
     # Draw the buttons
