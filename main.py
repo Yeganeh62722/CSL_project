@@ -127,8 +127,7 @@ while True:
     if ball_thrown_straight:
         ball_x += ball_speed_x
         if ball_x + BALL_RADIUS >= WALL_X:
-            ball_x = WALL_X - BALL_RADIUS
-            ball_speed_x = 0
+            ball_speed_x = -ball_speed_x
 
     # Update ball position for curve throw
     if ball_thrown_curve:
@@ -136,8 +135,7 @@ while True:
         ball_y +=  ball_speed_y
         ball_speed_y += 0.07
         if ball_x + BALL_RADIUS >= WALL_X:
-            ball_x = WALL_X - BALL_RADIUS
-            ball_speed_x = 0
+            ball_speed_x = -ball_speed_x
             ball_speed_y = 0
     
     # Update ball position for sinusoidald throw
@@ -146,9 +144,7 @@ while True:
         sinusoidal_angle += 0.1
         ball_y = (GROUND_Y - 54) - 50 * math.sin(sinusoidal_angle)
         if ball_x + BALL_RADIUS >= WALL_X:
-            ball_x = WALL_X - BALL_RADIUS
-            ball_speed_x = 0
-            sinusoidal_angle -= 0.1
+            ball_speed_x = -ball_speed_x
 
     if cannon_shooting:
         if cannon_angle > min_cannon_angle:
@@ -159,6 +155,8 @@ while True:
     if not cannon_shooting and cannon_angle < 0:
         cannon_angle += cannon_animation_speed
 
+    if ball_y > GROUND_Y:
+        ball_speed_y = -ball_speed_y
 
     # Draw the ground
     pygame.draw.rect(screen, GREEN, (0, GROUND_Y, WIDTH, GROUND_HEIGHT))
