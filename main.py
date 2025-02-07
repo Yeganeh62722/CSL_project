@@ -1,9 +1,17 @@
 import pygame
 import sys
 import math
+import ctypes
+from ctypes import CDLL, c_float, byref, POINTER
+import time
 
 # Initialize Pygame
 pygame.init()
+
+# Load the assembly object file
+straight_lib = ctypes.CDLL(r'./straight.dll')
+curvy_lib = ctypes.CDLL(r'./curvy.dll')
+sinusoidal_lib = ctypes.CDLL(r'./sinusoidal.dll')
 
 # Screen settings
 WIDTH, HEIGHT = 800, 600
@@ -68,6 +76,8 @@ reset_button_rect = pygame.Rect(WIDTH // 6 - BUTTON_WIDTH // 2, 240, BUTTON_WIDT
 
 # Game clock
 clock = pygame.time.Clock()
+start_time = end_time = 0
+
 
 def animate_cannon(screen, cannon_image, x, y, angle):
     rotated_cannon = pygame.transform.rotate(cannon_image, -angle)  # Rotate counterclockwise
@@ -109,6 +119,7 @@ while True:
                 ball_thrown_curve = False
                 ball_thrown_sinusoidal = False
                 cannon_shooting = True
+                start_time = time.time()
             if curve_button_rect.collidepoint(event.pos):
                 ball_speed_x = slider_speed
                 ball_speed_y = -4
@@ -143,26 +154,87 @@ while True:
             slider_speed = min_speed + (thumb_x - SLIDER_X) / SLIDER_WIDTH * (max_speed - min_speed)
             ball_speed_x = slider_speed
 
+    
+    # # Update ball position if thrown straight
+    # if ball_thrown_straight:
+    #     ball_x += ball_speed_x
+    #     if ball_x + BALL_RADIUS >= WALL_X:
+    #         print(time.time() - start_time)
+    #         ball_speed_x = -ball_speed_x
+
     # Update ball position if thrown straight
     if ball_thrown_straight:
-        ball_x += ball_speed_x
+        # Example game variables
+        ball_x = ctypes.c_int(int(ball_x))
+        ball_speed_x = ctypes.c_int(int(ball_speed_x))
+        straight_lib.update_ball_position.argtypes = [POINTER(ctypes.c_int), POINTER(ctypes.c_int)]
+        straight_lib.update_ball_position.restype = None
+        # Call the Assembly function
+        straight_lib.update_ball_position(byref(ball_x), byref(ball_speed_x))
+        ball_x = int(ball_x.value)
+        ball_speed_x = int(ball_speed_x.value)
         if ball_x + BALL_RADIUS >= WALL_X:
+            print(time.time() - start_time)
             ball_speed_x = -ball_speed_x
 
+    # # Update ball position for curve throw
+    # if ball_thrown_curve:
+    #     ball_x += ball_speed_x
+    #     ball_y +=  ball_speed_y
+    #     ball_speed_y += 0.07
+    #     if ball_x + BALL_RADIUS >= WALL_X:
+    #         ball_speed_x = -ball_speed_x
+    #         ball_speed_y = 0
+    
     # Update ball position for curve throw
+    curvy_lib.update_curve_ball_position.argtypes = (POINTER(c_float), 
+                                                     POINTER(c_float), 
+                                                     POINTER(c_float), 
+                                                     POINTER(c_float))
+    curvy_lib.update_curve_ball_position.restype = None
     if ball_thrown_curve:
-        ball_x += ball_speed_x
-        ball_y +=  ball_speed_y
-        ball_speed_y += 0.07
+        ball_x = c_float(ball_x)
+        ball_y = c_float(ball_y)
+        ball_speed_x = c_float(ball_speed_x)
+        ball_speed_y = c_float(ball_speed_y)
+
+        # Call the Assembly function
+        curvy_lib.update_curve_ball_position(
+            ball_x, ball_y, ball_speed_x, ball_speed_y
+        )
+        ball_x = float(ball_x.value)
+        ball_y = float(ball_y.value)
+        ball_speed_x = float(ball_speed_x.value)
+        ball_speed_y = float(ball_speed_y.value)
         if ball_x + BALL_RADIUS >= WALL_X:
             ball_speed_x = -ball_speed_x
             ball_speed_y = 0
     
+    # # Update ball position for sinusoidald throw
+    # if ball_thrown_sinusoidal:
+    #     ball_x += ball_speed_x
+    #     sinusoidal_angle += 0.1
+    #     ball_y = (GROUND_Y - 54) - 50 * math.sin(sinusoidal_angle)
+    #     if ball_x + BALL_RADIUS >= WALL_X:
+    #         ball_speed_x = -ball_speed_x
+
+
     # Update ball position for sinusoidald throw
+        sinusoidal_lib.update_sinusoidal_ball_position.argtypes = (c_float, c_float, c_float, c_float)
+        sinusoidal_lib.update_sinusoidal_ball_position.restype = None
     if ball_thrown_sinusoidal:
-        ball_x += ball_speed_x
-        sinusoidal_angle += 0.1
-        ball_y = (GROUND_Y - 54) - 50 * math.sin(sinusoidal_angle)
+        ball_x = c_float(ball_x)
+        ball_y = c_float(ball_y)
+        ball_speed_x = c_float(ball_speed_x)
+        sinusoidal_angle = c_float(sinusoidal_angle)
+
+        # Call the Assembly function
+        sinusoidal_lib.update_sinusoidal_ball_position(byref(ball_x), byref(ball_y), byref(ball_speed_x), byref(sinusoidal_angle))
+        
+        ball_x = float(ball_x.value)
+        ball_y = -float(ball_y.value) - 200
+        ball_speed_x = float(ball_speed_x.value)
+        sinusoidal_angle = float(sinusoidal_angle.value)
         if ball_x + BALL_RADIUS >= WALL_X:
             ball_speed_x = -ball_speed_x
 
