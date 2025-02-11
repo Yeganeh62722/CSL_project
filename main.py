@@ -43,6 +43,8 @@ BALL_RADIUS = 10
 ball_x, ball_y = 140, GROUND_Y - 54
 ball_speed_x = 6
 ball_speed_y = 2
+sin_mode = False
+sinusoidal_angle = 0
 
 # Racket settings
 RACKET_WIDTH, RACKET_HEIGHT = 10, 80
@@ -113,6 +115,10 @@ while True:
                 ball_speed_x = slider_speed
             else:
                 ball_speed_x = -slider_speed
+        
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_m:
+                sin_mode = not sin_mode
 
     if not game_over:
         # Move racket with mouse
@@ -121,8 +127,13 @@ while True:
 
         # Update ball position
         ball_x += ball_speed_x
+        if sin_mode:
+            sinusoidal_angle += 0.1
+            ball_y = ball_y - 5 * math.sin(sinusoidal_angle)
+        
         ball_y += ball_speed_y
         ball_rotation_angle = (ball_rotation_angle + rotation_speed) % 360
+
 
         # Ball-wall collisions
         if ball_y <= BALL_RADIUS or ball_y >= HEIGHT - BALL_RADIUS:
@@ -150,6 +161,7 @@ while True:
             
         if ball_y > GROUND_Y:
             ball_speed_y = -ball_speed_y
+            sin_mode = False
         
         if ball_x < 0:
             game_over = True
@@ -176,6 +188,12 @@ while True:
         # Speed value Label
         speed_text = font.render(f"Speed: {slider_speed:.1f}", True, BLUE)
         screen.blit(speed_text, (SLIDER_X + 60, SLIDER_Y - 30))
+        # Throw mode Label
+        if not sin_mode:
+            mode_text = font.render(f"Mode: Straight", True, BLUE)
+        else:
+            mode_text = font.render(f"Mode: Sinusoidal", True, BLUE)
+        screen.blit(mode_text, (SLIDER_X + 60, SLIDER_Y + 30))
 
     else:
         if max_score < score:
